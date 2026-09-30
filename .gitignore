@@ -52,3 +52,7 @@ Examples/*/build*
 Tests/*/build*
 build/*
 .claude/settings.local.json
+
+.zig-cache/
+zig-out/
+zig-pkg/
