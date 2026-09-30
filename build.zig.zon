@@ -1,0 +1,35 @@
+.{
+    .name = .iplug2,
+    .fingerprint = 0xa64a511e91808272,
+    .version = "0.0.0",
+    .minimum_zig_version = "0.16.0",
+    .dependencies = .{
+        .vst3_base = .{
+            .url = "git+https://github.com/steinbergmedia/vst3_base?ref=v3.8.0_build_66#3d2e82f8e6bff59c1d8b7a27491a29c2286b5206",
+            .hash = "N-V-__8AAFYlBQAX4DQPyzbSi1QOqIIK6BTEFr6lo0UOz6P8",
+        },
+        .vst3_pluginterfaces = .{
+            .url = "git+https://github.com/steinbergmedia/vst3_pluginterfaces?ref=v3.8.0_build_66#31d6eeba6daaa3e2a8bfbe3e7a90ca0b7fbfbc1c",
+            .hash = "N-V-__8AAOwnCAAbl_e2r_jKdxMJD4lcWh1pF6xWQHqCGguq",
+        },
+        .vst3_public_sdk = .{
+            .url = "git+https://github.com/steinbergmedia/vst3_public_sdk?ref=v3.8.0_build_66#a3911a4615dabbfdfd9d181ee26b05c70c289a95",
+            .hash = "N-V-__8AAC59OwF2-17oph5DyK9lBxSgETZlZNiSMs7GYsCM",
+        },
+        .clap = .{
+            .url = "git+https://github.com/free-audio/clap?ref=1.2.10#195b42a004144fab0b3cf95e9c067187d15365b7",
+            .hash = "N-V-__8AAB-JOwBFtOGup87WSc2jjAlPh8eIMTZnpkjysvO1",
+        },
+        .clap_helpers = .{
+            .url = "git+https://github.com/free-audio/clap-helpers#55a5dd5d1db9c87b32f407e387f64676d27e10b1",
+            .hash = "N-V-__8AAPjxBABZ9HsKV2J7uZzl5MBS1vhrR8DT_isVB4Xa",
+        },
+    },
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "LICENSE.txt",
+        "IPlug",
+        "WDL",
+    },
+}
