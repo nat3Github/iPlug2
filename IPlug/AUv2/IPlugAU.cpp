@@ -1231,10 +1231,6 @@ OSStatus IPlugAU::SetProperty(AudioUnitPropertyID propID, AudioUnitScope scope, 
     {
       const bool bypassed = *((UInt32*) pData) != 0;
       SetBypassed(bypassed);
-      
-      // TODO: should the following be called here?
-      OnActivate(!bypassed);
-      OnReset();
       return noErr;
     }
     NO_OP(kAudioUnitProperty_LastRenderError);           // 22,
