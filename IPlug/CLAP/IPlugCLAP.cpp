@@ -486,7 +486,7 @@ bool IPlugCLAP::paramsValueToText(clap_id paramIdx, double value, char* display,
 
   WDL_String str;
   
-  pParam->GetDisplay(value, isDoubleType, str);
+  pParam->GetDisplay(isDoubleType ? value : std::round(value), isDoubleType, str);
   
   // Add Label
   if (CStringHasContents(pParam->GetLabel()))
