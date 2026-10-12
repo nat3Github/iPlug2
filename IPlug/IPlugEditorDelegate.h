@@ -18,6 +18,8 @@
 #include <cassert>
 #include <cstring>
 #include <stdint.h>
+#include <functional>
+#include <vector>
 
 #include "ptrlist.h"
 
@@ -94,6 +96,18 @@ public:
 
   /** Called by app wrappers when the OS window scaling buttons/resizers are used */
   virtual void OnParentWindowResize(int width, int height) { /* NO-OP*/ }
+
+#if defined OS_LINUX
+  struct EditorFD { int fd; std::function<void()> func; };
+
+  /** Linux: call from OpenWindow() to have the plug-in API wrapper watch a file descriptor of the editor
+   * (e.g. its X11 connection) on the host's run loop. func is called on the UI thread when fd is readable.
+   * The list is cleared when the window closes. */
+  void AddEditorFD(int fd, std::function<void()> func) { mEditorFDs.push_back({fd, std::move(func)}); }
+
+  /** Linux: file descriptors added by the editor, used by the plug-in API wrappers */
+  std::vector<EditorFD> mEditorFDs;
+#endif
   
 #pragma mark - Methods you may want to override...
   /** Override this method to do something before the UI is opened. You must call the base implementation to make sure controls linked to parameters get updated correctly. */

@@ -143,4 +143,61 @@ void Timer_impl::TimerProc(void* userData)
   Timer_impl* itimer = (Timer_impl*) userData;
   itimer->mTimerFunc(*itimer);
 }
+#elif defined OS_LINUX
+#include <time.h>
+
+static uint64_t NowMs()
+{
+  timespec ts;
+  clock_gettime(CLOCK_MONOTONIC, &ts);
+  return (uint64_t) ts.tv_sec * 1000 + ts.tv_nsec / 1000000;
+}
+
+Timer* Timer::Create(ITimerFunction func, uint32_t intervalMs)
+{
+  return new Timer_impl(func, intervalMs);
+}
+
+WDL_Mutex Timer_impl::sMutex;
+WDL_PtrList<Timer_impl> Timer_impl::sTimers;
+
+Timer_impl::Timer_impl(ITimerFunction func, uint32_t intervalMs)
+: mTimerFunc(func)
+, mIntervalMs(intervalMs ? intervalMs : 1)
+, mNextMs(NowMs() + mIntervalMs)
+{
+  WDL_MutexLock lock(&sMutex);
+  sTimers.Add(this);
+}
+
+Timer_impl::~Timer_impl()
+{
+  Stop();
+}
+
+void Timer_impl::Stop()
+{
+  WDL_MutexLock lock(&sMutex);
+  sTimers.DeletePtr(this);
+}
+
+void Timer_impl::ProcessTimers()
+{
+  WDL_MutexLock lock(&sMutex);
+  const uint64_t now = NowMs();
+
+  // iterate backwards, a timer function may Stop() its own timer
+  for (auto i = sTimers.GetSize() - 1; i >= 0; i--)
+  {
+    Timer_impl* pTimer = sTimers.Get(i);
+
+    if (pTimer && now >= pTimer->mNextMs)
+    {
+      pTimer->mNextMs += pTimer->mIntervalMs;
+      if (pTimer->mNextMs <= now) // fell behind, don't try to catch up
+        pTimer->mNextMs = now + pTimer->mIntervalMs;
+      pTimer->mTimerFunc(*pTimer);
+    }
+  }
+}
 #endif
