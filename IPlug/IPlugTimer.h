@@ -95,6 +95,30 @@ private:
   long ID = 0;
   ITimerFunction mTimerFunc;
 };
+#elif defined OS_LINUX
+/** Linux has no process-wide UI run loop a plug-in can attach to.
+ * Timers are only registered here; the plug-in API wrapper pumps them from the host's run loop
+ * (VST3 IRunLoop, CLAP timer-support) by calling ProcessTimers() on the UI thread. */
+class Timer_impl : public Timer
+{
+public:
+  Timer_impl(ITimerFunction func, uint32_t intervalMs);
+  ~Timer_impl();
+  void Stop() override;
+
+  /** Call on the UI thread. Runs every timer that is due. */
+  static void ProcessTimers();
+
+  /** Interval in milliseconds a wrapper should ask the host to call ProcessTimers() at */
+  static constexpr uint32_t kPumpIntervalMs = 5;
+
+private:
+  static WDL_Mutex sMutex;
+  static WDL_PtrList<Timer_impl> sTimers;
+  ITimerFunction mTimerFunc;
+  uint32_t mIntervalMs;
+  uint64_t mNextMs;
+};
 #else
   #error NOT IMPLEMENTED
 #endif

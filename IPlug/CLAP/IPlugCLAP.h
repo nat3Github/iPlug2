@@ -174,6 +174,17 @@ private:
   
   // Helper to attach GUI Windows
   bool GUIWindowAttach(void* parent) noexcept;
+  void OpenEditorWindow(void* pParent);
+  void CloseEditorWindow();
+
+#if defined OS_LINUX
+  // Linux has no global UI run loop: timers and the editor's file descriptors are driven by the host
+  bool implementsTimerSupport() const noexcept override { return true; }
+  void onTimer(clap_id timerId) noexcept override;
+  bool implementsPosixFdSupport() const noexcept override { return true; }
+  void onPosixFd(int fd, clap_posix_fd_flags_t flags) noexcept override;
+  clap_id mTimerId = CLAP_INVALID_ID;
+#endif
 
   // Parameter flushing from GUI
   void FlushParamsIfNeeded();

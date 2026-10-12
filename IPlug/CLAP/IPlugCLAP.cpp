@@ -853,6 +853,8 @@ bool IPlugCLAP::guiIsApiSupported(const char* api, bool isFloating) noexcept
   return !isFloating && !strcmp(api, CLAP_WINDOW_API_COCOA);
 #elif defined OS_WIN
   return !isFloating && !strcmp(api, CLAP_WINDOW_API_WIN32);
+#elif defined OS_LINUX
+  return !isFloating && !strcmp(api, CLAP_WINDOW_API_X11);
 #else
 #error Not Implemented!
 #endif
@@ -864,6 +866,8 @@ bool IPlugCLAP::guiSetParent(const clap_window* pWindow) noexcept
   return GUIWindowAttach(pWindow->cocoa);
 #elif defined OS_WIN
   return GUIWindowAttach(pWindow->win32);
+#elif defined OS_LINUX
+  return GUIWindowAttach(reinterpret_cast<void*>(pWindow->x11));
 #else
 #error Not Implemented!
 #endif
@@ -876,12 +880,23 @@ bool IPlugCLAP::implementsGui() const noexcept
 
 bool IPlugCLAP::guiCreate(const char* api, bool isFloating) noexcept
 {
+#if defined OS_LINUX
+  if (HasUI() && mTimerId == CLAP_INVALID_ID && GetClapHost().canUseTimerSupport())
+    GetClapHost().timerSupportRegister(Timer_impl::kPumpIntervalMs, &mTimerId);
+#endif
   return HasUI();
 }
 
 void IPlugCLAP::guiDestroy() noexcept
 {
-  CloseWindow();
+  CloseEditorWindow();
+#if defined OS_LINUX
+  if (mTimerId != CLAP_INVALID_ID)
+  {
+    GetClapHost().timerSupportUnregister(mTimerId);
+    mTimerId = CLAP_INVALID_ID;
+  }
+#endif
   mGUIOpen = false;
   mWindow = nullptr;
 }
@@ -890,7 +905,7 @@ bool IPlugCLAP::guiShow() noexcept
 {
   if (HasUI() && !mGUIOpen)
   {
-    OpenWindow(mWindow);
+    OpenEditorWindow(mWindow);
     return true;
   }
   else
@@ -903,7 +918,7 @@ bool IPlugCLAP::guiHide() noexcept
 {
   if (HasUI())
   {
-    CloseWindow();
+    CloseEditorWindow();
     mGUIOpen = false;
     return true;
   }
@@ -952,7 +967,7 @@ bool IPlugCLAP::GUIWindowAttach(void* pWindow) noexcept
 {
   if (HasUI())
   {
-    OpenWindow(pWindow);
+    OpenEditorWindow(pWindow);
     mWindow = pWindow;
     mGUIOpen = true;
     return true;
@@ -962,6 +977,47 @@ bool IPlugCLAP::GUIWindowAttach(void* pWindow) noexcept
     return false;
   }
 }
+
+void IPlugCLAP::OpenEditorWindow(void* pParent)
+{
+  OpenWindow(pParent);
+#if defined OS_LINUX
+  if (GetClapHost().canUsePosixFdSupport())
+  {
+    for (auto& f : mEditorFDs)
+      GetClapHost().posixFdSupportRegister(f.fd, CLAP_POSIX_FD_READ);
+  }
+#endif
+}
+
+void IPlugCLAP::CloseEditorWindow()
+{
+#if defined OS_LINUX
+  if (GetClapHost().canUsePosixFdSupport())
+  {
+    for (auto& f : mEditorFDs)
+      GetClapHost().posixFdSupportUnregister(f.fd);
+  }
+  mEditorFDs.clear();
+#endif
+  CloseWindow();
+}
+
+#if defined OS_LINUX
+void IPlugCLAP::onTimer(clap_id timerId) noexcept
+{
+  Timer_impl::ProcessTimers();
+}
+
+void IPlugCLAP::onPosixFd(int fd, clap_posix_fd_flags_t flags) noexcept
+{
+  for (auto& f : mEditorFDs)
+  {
+    if (f.fd == fd)
+      f.func();
+  }
+}
+#endif
 
 bool IPlugCLAP::guiAdjustSize(uint32_t* pWidth, uint32_t* pHeight) noexcept
 {

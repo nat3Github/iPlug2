@@ -14,11 +14,16 @@
 #include "pluginterfaces/base/keycodes.h"
 
 #include "IPlugStructs.h"
+#include "IPlugTimer.h"
 
 /** IPlug VST3 View  */
 template <class T>
 class IPlugVST3View : public Steinberg::CPluginView
                     , public Steinberg::IPlugViewContentScaleSupport
+#ifdef OS_LINUX
+                    , public Steinberg::Linux::ITimerHandler
+                    , public Steinberg::Linux::IEventHandler
+#endif
 {
 public:
   IPlugVST3View(T& owner)
@@ -45,6 +50,9 @@ public:
       
 #elif defined OS_MAC
       if (strcmp(type, Steinberg::kPlatformTypeNSView) == 0)
+        return Steinberg::kResultTrue;
+#elif defined OS_LINUX
+      if (strcmp(type, Steinberg::kPlatformTypeX11EmbedWindowID) == 0)
         return Steinberg::kResultTrue;
 #endif
     }
@@ -119,6 +127,14 @@ public:
         pView = mOwner.OpenWindow(pParent);
       else // Carbon
         return Steinberg::kResultFalse;
+#elif defined OS_LINUX
+      if (strcmp(type, Steinberg::kPlatformTypeX11EmbedWindowID) == 0)
+      {
+        pView = mOwner.OpenWindow(pParent);
+        AttachRunLoop();
+      }
+      else
+        return Steinberg::kResultFalse;
 #endif
       return Steinberg::kResultTrue;
     }
@@ -128,6 +144,9 @@ public:
     
   Steinberg::tresult PLUGIN_API removed() override
   {
+#ifdef OS_LINUX
+    DetachRunLoop();
+#endif
     if (mOwner.HasUI())
       mOwner.CloseWindow();
     
@@ -146,6 +165,10 @@ public:
   Steinberg::tresult PLUGIN_API queryInterface(const Steinberg::TUID _iid, void** obj) override
   {
     QUERY_INTERFACE(_iid, obj, IPlugViewContentScaleSupport::iid, IPlugViewContentScaleSupport)
+#ifdef OS_LINUX
+    QUERY_INTERFACE(_iid, obj, Steinberg::Linux::ITimerHandler::iid, Steinberg::Linux::ITimerHandler)
+    QUERY_INTERFACE(_iid, obj, Steinberg::Linux::IEventHandler::iid, Steinberg::Linux::IEventHandler)
+#endif
     *obj = 0;
     return CPluginView::queryInterface(_iid, obj);
   }
@@ -202,6 +225,52 @@ public:
   }
   
   DELEGATE_REFCOUNT(Steinberg::CPluginView)
+
+#ifdef OS_LINUX
+  // Linux has no global UI run loop: timers and the editor's file descriptors are driven by the host's IRunLoop
+  void PLUGIN_API onTimer() override
+  {
+    iplug::Timer_impl::ProcessTimers();
+  }
+
+  void PLUGIN_API onFDIsSet(Steinberg::Linux::FileDescriptor fd) override
+  {
+    for (auto& f : mOwner.mEditorFDs)
+    {
+      if (f.fd == fd)
+        f.func();
+    }
+  }
+
+  void AttachRunLoop()
+  {
+    if (!plugFrame || plugFrame->queryInterface(Steinberg::Linux::IRunLoop::iid, (void**) &mRunLoop) != Steinberg::kResultTrue)
+    {
+      mRunLoop = nullptr;
+      return;
+    }
+
+    mRunLoop->registerTimer(this, iplug::Timer_impl::kPumpIntervalMs);
+
+    for (auto& f : mOwner.mEditorFDs)
+      mRunLoop->registerEventHandler(this, f.fd);
+  }
+
+  void DetachRunLoop()
+  {
+    if (mRunLoop)
+    {
+      mRunLoop->unregisterEventHandler(this);
+      mRunLoop->unregisterTimer(this);
+      mRunLoop->release();
+      mRunLoop = nullptr;
+    }
+
+    mOwner.mEditorFDs.clear();
+  }
+
+  Steinberg::Linux::IRunLoop* mRunLoop = nullptr;
+#endif
   
 #pragma mark -
   
