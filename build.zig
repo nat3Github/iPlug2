@@ -57,6 +57,7 @@ pub fn addIPlug2(dep: *std.Build.Dependency, mod: *std.Build.Module, opts: Optio
         .files = &.{ "IPlugAPIBase.cpp", "IPlugParameter.cpp", "IPlugPluginBase.cpp", "IPlugProcessor.cpp", "IPlugTimer.cpp" },
         .flags = f,
     });
+    if (os == .windows) mod.addCSourceFile(.{ .file = dep.path("WDL/win32_utf8.c"), .flags = f, .language = .c });
 
     switch (opts.api) {
         .vst3 => {
