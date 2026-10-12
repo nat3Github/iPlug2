@@ -72,7 +72,7 @@ typedef union { double f; WDL_UINT64   int64; } WDL_EndianDouble;
 	#error Unsupported endian
 #endif
 
-#if !defined(__EMSCRIPTEN__)
+#if !defined(__EMSCRIPTEN__) && defined(__FLOAT_WORD_ORDER__) // clang does not define __FLOAT_WORD_ORDER__
   #if __FLOAT_WORD_ORDER__ != __BYTE_ORDER__
     #error Unsupported float endian
   #endif
@@ -122,7 +122,7 @@ typedef union { double f; WDL_UINT64   int64; } WDL_EndianDouble;
 
 
 // GNU C
-#elif __GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 3)
+#elif defined(__clang__) || __GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 3) // clang reports __GNUC__ 4.2
 #define WDL_bswap32(x) __builtin_bswap32(x)
 #define WDL_bswap64(x) __builtin_bswap64(x)
 
