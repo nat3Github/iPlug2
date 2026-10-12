@@ -95,6 +95,7 @@ fn addVst3Sdk(b: *std.Build, mod: *std.Build.Module, os: std.Target.Os.Tag) void
     switch (os) {
         .windows => mod.addCSourceFile(.{ .file = root.path(b, "public.sdk/source/main/dllmain.cpp"), .flags = sdk_flags }),
         .macos => mod.addCSourceFile(.{ .file = root.path(b, "public.sdk/source/main/macmain.cpp"), .flags = sdk_flags }),
+        .linux => mod.addCSourceFile(.{ .file = root.path(b, "public.sdk/source/main/linuxmain.cpp"), .flags = sdk_flags }),
         else => {},
     }
 }
